@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Datos sensoriales</string>
+    <string name="accelerometro_title">Acelerómetro</string>
+    <string name="valor_x">Valor X: </string>
+    <string name="valor_y">Valor Y: </string>
+    <string name="valor_z">Valor Z: </string>
+    <string name="valor">Valor : </string>
+    <string name="orientacion_title">Orientación</string>
+    <string name="giroscopio_title">Giroscopio</string>
+    <string name="luminosidad_title">Luminosidad</string>
+    <string name="barometro_title">Barómetro</string>
+    <string name="termometro_title">Termómetro</string>
+    <string name="cmagneticos_title">Campos Magnéticos</string>
+    <string name="proximidad_title">Proximidad</string>
+    <string name="humedad_title">Humedad Relativa</string>
+    <string name="send_data_drizzle">Enviar datos a Drizzle</string>
+</resources>
