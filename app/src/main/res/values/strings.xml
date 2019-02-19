@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Datos sensoriales</string>
+    <string name="app_name">Sensor</string>
     <string name="accelerometro_title">Acelerómetro</string>
     <string name="valor_x">Valor X: </string>
     <string name="valor_y">Valor Y: </string>

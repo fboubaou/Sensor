@@ -1,5 +1,6 @@
 package com.example.fboubaou.sensor
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.hardware.Sensor
@@ -19,76 +20,117 @@ import android.widget.Toast
 import org.json.JSONObject
 import org.json.JSONArray
 import java.sql.Timestamp
+import android.hardware.usb.UsbDevice.getDeviceId
+import android.support.annotation.RequiresApi
+import android.telephony.TelephonyManager
+import android.Manifest.permission
+import android.Manifest.permission.READ_CALL_LOG
+import android.Manifest.permission.READ_PHONE_STATE
+import android.annotation.TargetApi
+import android.support.v4.app.ActivityCompat
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
+import android.support.v4.content.ContextCompat
+import com.example.fboubaou.sensor.R.id.message
+import com.github.kittinunf.fuel.Fuel
+import java.net.HttpURLConnection
+import java.net.URL
+import java.nio.charset.StandardCharsets
+import kotlin.concurrent.thread
 
 
-class SensorDrizzle(
-    var sensor: String,
-    var value: String,
-    var value_x: String,
-    var value_y: String,
-    var value_z: String,
-    var timestamp: String
-)
+class SimpleThread: Thread() {
+    public override fun run() {
+        Log.d("THREAD","empezado")
+    }
+}
+class MainActivity : AppCompatActivity() , SensorEventListener {
+
+    //    variables Locales
+    private var value_acel_x: Double = 0.0
+    private var value_acel_y: Double = 0.0
+    private var value_acel_z: Double = 0.0
+
+    private var value_gir_x: Double = 0.0
+    private var value_gir_y: Double = 0.0
+    private var value_gir_z: Double = 0.0
+
+    private var value_mag_x: Double = 0.0
+    private var value_mag_y: Double = 0.0
+    private var value_mag_z: Double = 0.0
+
+    private var value_temp: Double = 0.0
+
+    private var value_lux: Double = 0.0
+
+    private var value_bar: Double = 0.0
+
+    private var value_prox: Double = 0.0
+
+    private var value_hum: Double = 0.0
+
+    private val json_array_sensors: JSONArray = JSONArray()
+    private val json_array_sensors_topost: JSONArray = JSONArray()
+    private val json_sensors: JSONObject = JSONObject()
 
 
+    private var json_topost: JSONObject = JSONObject()
 
-class MainActivity : AppCompatActivity() , SensorEventListener{
+    //    Sensor Manager y sensores
+    private lateinit var mSensorManager: SensorManager
+    private var mAccelerometer: Sensor? = null
+    private var mGyroscope: Sensor? = null
+    private var mMagneticField: Sensor? = null
+    private var mBarometer: Sensor? = null
+    private var mTemperature: Sensor? = null
+    private var mLuminosity: Sensor? = null
+    private var mProximity: Sensor? = null
+    private var mHumidity: Sensor? = null
 
-    val nameTable = mutableMapOf<String, SensorDrizzle>()
+    //    Manager para la ubicacion
+    private var locationManager: LocationManager? = null
 
-//    Sensor Manager y sensores
-    private lateinit var mSensorManager : SensorManager
-    private lateinit var mAccelerometer : Sensor
-    private lateinit var mGyroscope : Sensor
-    private lateinit var mMagneticField : Sensor
-    private lateinit var mBarometer : Sensor
-    private lateinit var mTemperature : Sensor
-    private lateinit var mLuminosity : Sensor
-    private lateinit var mProximity : Sensor
-    private lateinit var mHumidity : Sensor
+    //    TV's de los valores de acelerometro
+    private lateinit var valorx_acc_tv: TextView
+    private lateinit var valory_acc_tv: TextView
+    private lateinit var valorz_acc_tv: TextView
 
-//    TV's de los valores de acelerometro
-    private lateinit var valorx_acc_tv : TextView
-    private lateinit var valory_acc_tv : TextView
-    private lateinit var valorz_acc_tv : TextView
+    //    TV'S de los valores de giroscopio
+    private lateinit var valorx_gir_tv: TextView
+    private lateinit var valory_gir_tv: TextView
+    private lateinit var valorz_gir_tv: TextView
 
-//    TV'S de los valores de giroscopio
-    private lateinit var valorx_gir_tv : TextView
-    private lateinit var valory_gir_tv : TextView
-    private lateinit var valorz_gir_tv : TextView
+    //    TV'S de los valores del campo magnético
+    private lateinit var valorx_cmag_tv: TextView
+    private lateinit var valory_cmag_tv: TextView
+    private lateinit var valorz_cmag_tv: TextView
 
-//    TV'S de los valores del campo magnético
-    private lateinit var valorx_cmag_tv : TextView
-    private lateinit var valory_cmag_tv : TextView
-    private lateinit var valorz_cmag_tv : TextView
+    //    TV del valor del termómetro
+    private lateinit var valor_temp_tv: TextView
 
-//    TV del valor del termómetro
-    private lateinit var valor_temp_tv : TextView
+    //    TV del valor del termómetro
+    private lateinit var valor_lum_tv: TextView
 
-//    TV del valor del termómetro
-    private lateinit var valor_lum_tv : TextView
+    //    TV del barómetro
+    private lateinit var valor_bar_tv: TextView
 
-//    TV del barómetro
-    private lateinit var valor_bar_tv : TextView
+    //    TV de la proximidad
+    private lateinit var valor_prox_tv: TextView
 
-//    TV de la proximidad
-    private lateinit var valor_prox_tv : TextView
+    //    TV de la humedad
+    private lateinit var valor_hum_tv: TextView
 
-//    TV de la humedad
-    private lateinit var valor_hum_tv : TextView
+    //    BTN envío de Info
+    private lateinit var btn_envia: Button
 
-//    BTN envío de Info
-    private lateinit var btn_envia : Button
-
+    @RequiresApi(Build.VERSION_CODES.O)
+    @SuppressLint("MissingPermission", "NewApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-
-//        for((key, value) in nameTable){
-//
-//
-//        }
 
 //        obtenemos el TV del acelerómetro
         this.valorx_acc_tv = findViewById(R.id.acc_valorx_tv)
@@ -151,221 +193,225 @@ class MainActivity : AppCompatActivity() , SensorEventListener{
 //        Obtenemos Hardware de humedad
         mHumidity = mSensorManager.getDefaultSensor(Sensor.TYPE_RELATIVE_HUMIDITY)
 
-//    Listener del botón para enviar datos
-    btn_envia.setOnClickListener {
-        Toast.makeText(this,"Envío de Información a Drizzle Iniciado",Toast.LENGTH_SHORT).show()
-//        Thread para envío de info
-//        Thread para envío de info
-//        Thread para envío de info
 
-    }
+
+//    Listener del botón para enviar datos
+        btn_envia.setOnClickListener {
+            Toast.makeText(this, "Envío de Información a Drizzle Iniciado", Toast.LENGTH_SHORT).show()
+            val t1 = ThreadExample1()
+            t1.start()
+
+
+        }
 
     }
 
     @SuppressLint("SetTextI18n")
     override fun onSensorChanged(event: SensorEvent?) {
 
-        when(event?.sensor?.type){
+        when (event?.sensor?.type) {
 
 
 //            Detectado acelerómetro
             Sensor.TYPE_ACCELEROMETER -> {
 
-                val tsLong = System.currentTimeMillis() / 1000
-                var ts:String = tsLong.toString()
+                //             registramos el valor en la variable local
+                value_acel_x = event.values[0].toDouble()
+                value_acel_y = event.values[1].toDouble()
+                value_acel_z = event.values[2].toDouble()
 
 //                Asignamos datos recibidos al TV'S
-                valorx_acc_tv.text = "Valor X: "+ event.values[0].toString()
-                valory_acc_tv.text = "Valor Y: "+event.values[1].toString()
-                valorz_acc_tv.text = "Valor Z: "+event.values[2].toString()
-
-//                Falta por definir el nombre de los sensores como toca, es decir pedir datos a Joan
-                val Acc_Data = SensorDrizzle("Acelerómetro", "", event.values[0].toString(),event.values[1].toString(),event.values[2].toString(),ts)
-                nameTable["Accelerometer"] = Acc_Data
-//                metodo formateo json
-//                metodo formateo json
-//                metodo formateo json
+                valorx_acc_tv.text = "Valor X: " + value_acel_x.toString()
+                valory_acc_tv.text = "Valor Y: " + value_acel_y.toString()
+                valorz_acc_tv.text = "Valor Z: " + value_acel_z.toString()
 
             }
 //            Detectado Giroscopio
             Sensor.TYPE_GYROSCOPE -> {
-//                se ha de crear en cada iteración ?
-//                se ha de crear en cada iteración ?
-//                se ha de crear en cada iteración ?
-                val tsLong = System.currentTimeMillis() / 1000
-                val ts = tsLong.toString()
+
+                //             registramos el valor en la variable local
+                value_gir_x = event.values[0].toDouble()
+                value_gir_y = event.values[1].toDouble()
+                value_gir_z = event.values[2].toDouble()
 
 //                Asignamos valores a los TV'S
-                valorx_gir_tv.text = "Valor X: "+ event.values[0].toString()
-                valory_gir_tv.text = "Valor Y: "+event.values[1].toString()
-                valorz_gir_tv.text = "Valor Z: "+event.values[2].toString()
+                valorx_gir_tv.text = "Valor X: " + value_gir_x.toString()
+                valory_gir_tv.text = "Valor Y: " + value_gir_y.toString()
+                valorz_gir_tv.text = "Valor Z: " + value_gir_z.toString()
 
-//                Falta por definir el nombre de los sensores como toca, es decir pedir datos a Joan
-                val Gir_Data = SensorDrizzle("Giroscopio", "", event.values[0].toString(),event.values[1].toString(),event.values[2].toString(),ts)
-                nameTable["Gyroscope"] = Gir_Data
-//                metodo formateo json
-//                metodo formateo json
-//                metodo formateo json
+
             }
-//            Detectado Campo Magnético
-            Sensor.TYPE_MAGNETIC_FIELD ->{
-                val tsLong = System.currentTimeMillis() / 1000
-                val ts = tsLong.toString()
+            Sensor.TYPE_MAGNETIC_FIELD -> {
 
+//                registramos el valor en la variable local
+                value_mag_x = event.values[0].toDouble()
+                value_mag_y = event.values[1].toDouble()
+                value_mag_z = event.values[2].toDouble()
 //                Asignamos valores a los TV'S
-                valorx_cmag_tv.text = "Valor X: "+ event.values[0].toString()
-                valory_cmag_tv.text = "Valor Y: "+event.values[1].toString()
-                valorz_cmag_tv.text = "Valor Z: "+event.values[2].toString()
+                valorx_cmag_tv.text = "Valor X: " + value_mag_x.toString()
+                valory_cmag_tv.text = "Valor Y: " + value_mag_y.toString()
+                valorz_cmag_tv.text = "Valor Z: " + value_mag_z.toString()
 
-//                Falta por definir el nombre de los sensores como toca, es decir pedir datos a Joan
-                val CMag_Data = SensorDrizzle("Campos Magnéticos", "", event.values[0].toString(),event.values[1].toString(),event.values[2].toString(),ts)
-                nameTable["Magnetic Fields"] = CMag_Data
 
-//                metodo formateo json
-//                metodo formateo json
-//                metodo formateo json
             }
 //            Detectado termómetro
-            Sensor.TYPE_AMBIENT_TEMPERATURE ->{
-                val tsLong = System.currentTimeMillis() / 1000
-                val ts = tsLong.toString()
-
+            Sensor.TYPE_AMBIENT_TEMPERATURE -> {
+//                registramos el valor en la variable local
+                value_temp = event.values[0].toDouble()
 //                asignamos valor a TV
-                valor_temp_tv.text = "Valor: "+event.values[0].toString()
+                valor_temp_tv.text = "Valor: " + value_temp.toString()
 
-//                Falta por definir el nombre de los sensores como toca, es decir pedir datos a Joan
-                val Term_Data = SensorDrizzle("Temperatura Ambiente", event.values[0].toString(), "","","",ts)
-                nameTable["MagneticFields"] = Term_Data
 
             }
 //            Detectada luminosidad
-            Sensor.TYPE_LIGHT ->{
-                val tsLong = System.currentTimeMillis() / 1000
-                val ts = tsLong.toString()
-
+            Sensor.TYPE_LIGHT -> {
+//                registramos el valor en la variable local
+                value_lux = event.values[0].toDouble()
 //                Asignamos valor a TV
-                valor_lum_tv.text = "Valor: "+event.values[0].toString()
-
-//                Falta por definir el nombre de los sensores como toca, es decir pedir datos a Joan
-                val Lum_Data = SensorDrizzle("Luminosidad", event.values[0].toString(), "","","",ts)
-                nameTable["Luminosity"] = Lum_Data
+                valor_lum_tv.text = "Valor: " + value_lux.toString()
 
 
             }
 //            Detectado barómetro
-            Sensor.TYPE_PRESSURE ->{
-                val tsLong = System.currentTimeMillis() / 1000
-                val ts = tsLong.toString()
-
+            Sensor.TYPE_PRESSURE -> {
+//                registramos el valor en la variable local
+                value_bar = event.values[0].toDouble()
 //                Asignamos valor a TV
-                valor_bar_tv.text = "Valor: "+event.values[0].toString()
-
-//                Falta por definir el nombre de los sensores como toca, es decir pedir datos a Joan
-                val Bar_Data = SensorDrizzle("Barómetro", event.values[0].toString(), "","","",ts)
-                nameTable["Barometer"] = Bar_Data
+                valor_bar_tv.text = "Valor: " + value_bar.toString()
 
 
             }
+
 //            Detectado proximidad
-            Sensor.TYPE_PROXIMITY ->{
-                val tsLong = System.currentTimeMillis() / 1000
-                val ts = tsLong.toString()
-
-                valor_prox_tv.text = "Valor: "+event.values[0].toString()
-
-//                Falta por definir el nombre de los sensores como toca, es decir pedir datos a Joan
-                val Prox_Data = SensorDrizzle("Proximidad", event.values[0].toString(), "","","",ts)
-                nameTable["Proximity"] = Prox_Data
+            Sensor.TYPE_PROXIMITY -> {
+//                registramos el valor en la variable local
+                value_prox = event.values[0].toDouble()
+//                asignamos valor a TV
+                valor_prox_tv.text = "Valor: " + value_prox.toString()
 
 
             }
+//            Detectado Campo Magnético
 
 //            Detectado humedad
-            Sensor.TYPE_RELATIVE_HUMIDITY ->{
-                val tsLong = System.currentTimeMillis() / 1000
-                val ts = tsLong.toString()
-
-                valor_hum_tv.text = "Valor: "+event.values[0].toString()
-
-//                Falta por definir el nombre de los sensores como toca, es decir pedir datos a Joan
-                val HRel_Data = SensorDrizzle("HumedadRelativa", event.values[0].toString(), "","","",ts)
-                nameTable["RelativeHumidity"] = HRel_Data
-
+            Sensor.TYPE_RELATIVE_HUMIDITY -> {
+//                registramos el valor en la variable local
+                value_hum = event.values[0].toDouble()
+//               asignamos valor a TV
+                valor_hum_tv.text = "Valor: " + value_hum.toString()
 
 
             }
         }
     }
-
-
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-//
-// To change body of created functions use File | Settings | File Templates.
-    }
-
 
     override fun onResume() {
         super.onResume()
-        mSensorManager.registerListener(this, mAccelerometer,SensorManager.SENSOR_DELAY_NORMAL)
-        mSensorManager.registerListener(this, mGyroscope,SensorManager.SENSOR_DELAY_NORMAL)
-        mSensorManager.registerListener(this, mMagneticField,SensorManager.SENSOR_DELAY_NORMAL)
-        mSensorManager.registerListener(this,mTemperature,SensorManager.SENSOR_DELAY_NORMAL)
-        mSensorManager.registerListener(this,mLuminosity,SensorManager.SENSOR_DELAY_NORMAL)
-        mSensorManager.registerListener(this,mBarometer,SensorManager.SENSOR_DELAY_NORMAL)
-        mSensorManager.registerListener(this,mHumidity,SensorManager.SENSOR_DELAY_NORMAL)
-        mSensorManager.registerListener(this,mProximity,SensorManager.SENSOR_DELAY_NORMAL)
+        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+        mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL)
+        mSensorManager.registerListener(this, mMagneticField, SensorManager.SENSOR_DELAY_NORMAL)
+        mSensorManager.registerListener(this, mTemperature, SensorManager.SENSOR_DELAY_NORMAL)
+        mSensorManager.registerListener(this, mLuminosity, SensorManager.SENSOR_DELAY_NORMAL)
+        mSensorManager.registerListener(this, mBarometer, SensorManager.SENSOR_DELAY_NORMAL)
+        mSensorManager.registerListener(this, mHumidity, SensorManager.SENSOR_DELAY_NORMAL)
+        mSensorManager.registerListener(this, mProximity, SensorManager.SENSOR_DELAY_NORMAL)
     }
 
-    //Funcion para esconder barra de estado.
-    private fun hideStatusBar(){
-        if (Build.VERSION.SDK_INT >= 16) {
-            getWindow().setFlags(AccessibilityNodeInfoCompat.ACTION_NEXT_HTML_ELEMENT, AccessibilityNodeInfoCompat.ACTION_NEXT_HTML_ELEMENT);
-            getWindow().getDecorView().setSystemUiVisibility(3328);
-        }else{
-            requestWindowFeature(Window.FEATURE_NO_TITLE);
-            this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+    private fun appendDataJsonArray(json_array: JSONArray, json_k: String, json_v: Any, json_obj: JSONObject) {
+        val obj = JSONObject()
+
+//        incluimos los K,V en nuestro objeto para incluirlos en el array.
+        obj.put(json_k, json_v)
+        json_obj.put(json_k, json_v)
+        json_array.put(obj)
+
+    }
+
+    private fun jsonValorTotal(array_sensors: JSONArray, json_obj: JSONObject): JSONObject {
+
+        val json_res = JSONObject()
+        array_sensors.put(json_obj)
+
+        json_res.put("mode", "async")
+        json_res.put("messageType", "09a60d4e0c11fc1a6756")
+        json_res.put("messages", array_sensors)
+
+        return json_res
+    }
+
+    private fun checkValue(value: Double): Boolean {
+        return (value <= 0.0 || value >= 0.0)
+    }
+
+    private fun appendCheckedValue(key: String, value: Double) {
+        if (checkValue(value)) {
+            appendDataJsonArray(json_array_sensors, key, value, json_sensors)
         }
     }
 
-    private fun json1Valor(dataArray:Array<Any>): JSONObject{
 
-//          Creación objetos necesarios.
-        val json:JSONObject = JSONObject()
-        val jsonA: JSONArray = JSONArray()
-
-//        Recorremos array para generar el mismo array en JSON
-        for (i in 0 until dataArray.size) {
-
-                val internalObject = JSONObject()
-                when(i){
-                    0->{
-//                        creacción de objeto con los valores que tocan aqui. (SENSOR)
-                        internalObject.put("Sensor", dataArray[i])
-                    }
-                    1->{
-//                        creacción de objeto con los valores que tocan aqui. (VALOR/VALORX,VALORy/VALORZ)
-//                        ARRAY DE VALORES O NO ???
-//                        ARRAY DE VALORES O NO ???
-//                        ARRAY DE VALORES O NO ???
-                    }
-                    2->{
-//
-//                        internalObject.put("Timestamp", ts)
-                    }
-                }
-
-                jsonA.put(internalObject)
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
 
+    inner class ThreadExample1 : Thread() {
+
+        @SuppressLint("NewApi")
+        @TargetApi(Build.VERSION_CODES.KITKAT)
+        @RequiresApi(Build.VERSION_CODES.KITKAT)
+        override fun run() {
+            while (true){
+
+
+//            generamos timestamp y lo appendizamos.
+                val tsLong = System.currentTimeMillis() / 1000
+                appendDataJsonArray(json_array_sensors, "TimeStamp", tsLong, json_sensors)
+                appendDataJsonArray(json_array_sensors, "ID", "24:71:89:E9:AA:86", json_sensors)
+
+
+
+                appendCheckedValue("TempAmb", value_temp)
+                appendCheckedValue("TempSensor", 0.0)
+                appendCheckedValue("AcelX", value_acel_x)
+                appendCheckedValue("AcelY", value_acel_y)
+                appendCheckedValue("AcelZ", value_acel_z)
+                appendCheckedValue("GiroX", value_gir_x)
+                appendCheckedValue("GiroY", value_gir_y)
+                appendCheckedValue("GiroZ", value_gir_z)
+                appendCheckedValue("Lux", value_lux)
+                appendCheckedValue("Hum", value_hum)
+                appendCheckedValue("MagX", value_mag_x)
+                appendCheckedValue("MagY", value_mag_y)
+                appendCheckedValue("MagZ", value_mag_z)
+                appendCheckedValue("Bar", value_bar)
+                appendDataJsonArray(json_array_sensors, "Lat", 0, json_sensors)
+                appendDataJsonArray(json_array_sensors, "Long", 0, json_sensors)
+
+                json_topost = jsonValorTotal(json_array_sensors_topost, json_sensors)
+
+
+
+            Log.d("JSON TEST TO POST", json_topost.toString())
+            Fuel.post("https://iotmmsad277ddd4.hana.ondemand.com/com.sap.iotservices.mms/v1/api/http/data/0a380ddd-b307-4018-8b3e-85f4bf46b832")
+                .header("Authorization" to "Bearer 4fc9de4f207fadb0af66bbfe4b871762","content-type" to "application/json")
+                .body(json_topost.toString(),Charsets.UTF_8)
+                .responseString()
+//            limpiamos el valor recién enviado.
+                json_topost.remove("message")
+                json_array_sensors_topost.remove(0)
+                sleep(500)
+
+
+            }
         }
-        json.put("mode","sync")
-        json.put("messageType","m0t0y0p0e1")
-        json.put("message",jsonA)
 
+        fun main(args: Array<String>) {
 
-        return json
+            }
+        }
+
     }
-}
+
 
 
 
