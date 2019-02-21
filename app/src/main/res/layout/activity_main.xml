@@ -166,6 +166,12 @@
                     android:layout_height="wrap_content" android:id="@+id/btn_send_data_drizzle"
                     android:layout_marginTop="35dp" android:textColor="@color/black" android:layout_marginLeft="60dp"
                     android:layout_marginRight="60dp" android:layout_marginBottom="20dp"/>
+            <Button
+                    android:text="@string/stop_send_data_drizzle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:id="@+id/btn_stop_send_data_drizzle"
+                    android:layout_marginTop="10dp" android:textColor="@color/black" android:layout_marginLeft="60dp"
+                    android:layout_marginRight="60dp" android:layout_marginBottom="20dp"/>
         </LinearLayout>
     </ScrollView>
 </android.support.constraint.ConstraintLayout>

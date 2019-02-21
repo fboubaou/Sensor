@@ -74,7 +74,7 @@ class MainActivity : AppCompatActivity() , SensorEventListener {
     private val json_array_sensors: JSONArray = JSONArray()
     private val json_array_sensors_topost: JSONArray = JSONArray()
     private val json_sensors: JSONObject = JSONObject()
-
+    private var exit: Boolean = false
 
     private var json_topost: JSONObject = JSONObject()
 
@@ -122,8 +122,9 @@ class MainActivity : AppCompatActivity() , SensorEventListener {
     //    TV de la humedad
     private lateinit var valor_hum_tv: TextView
 
-    //    BTN envío de Info
+    //    BTN's manipulación de Info
     private lateinit var btn_envia: Button
+    private lateinit var btn_stop: Button
 
     @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("MissingPermission", "NewApi")
@@ -162,8 +163,9 @@ class MainActivity : AppCompatActivity() , SensorEventListener {
 //        obtenemos el TV de humedad
         this.valor_hum_tv = findViewById(R.id.hum_valor_tv)
 
-//        Obtenemos el BTN de envío de info
+//        Obtenemos el BTN's manipulacion de info
         this.btn_envia = findViewById(R.id.btn_send_data_drizzle)
+        this.btn_stop = findViewById(R.id.btn_stop_send_data_drizzle)
 /*-----------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------*/
 //        Sensor Manager
@@ -194,14 +196,28 @@ class MainActivity : AppCompatActivity() , SensorEventListener {
         mHumidity = mSensorManager.getDefaultSensor(Sensor.TYPE_RELATIVE_HUMIDITY)
 
 
-
+        val t1 = ThreadExample1()
 //    Listener del botón para enviar datos
+
+        var first_entry:Boolean = false
         btn_envia.setOnClickListener {
-            Toast.makeText(this, "Envío de Información a Drizzle Iniciado", Toast.LENGTH_SHORT).show()
-            val t1 = ThreadExample1()
-            t1.start()
+
+            if (!first_entry) {
+                Toast.makeText(this, "Envío de Información a Drizzle Iniciado", Toast.LENGTH_LONG).show()
+                t1.start()
+                first_entry = true
+            } else {
+                this.exit = false
+            }
 
 
+
+
+        }
+        btn_stop.setOnClickListener {
+            Toast.makeText(this, "Envío de Información a Drizzle Parado", Toast.LENGTH_SHORT).show()
+
+            this.exit = true
         }
 
     }
@@ -360,14 +376,13 @@ class MainActivity : AppCompatActivity() , SensorEventListener {
         @TargetApi(Build.VERSION_CODES.KITKAT)
         @RequiresApi(Build.VERSION_CODES.KITKAT)
         override fun run() {
-            while (true){
+            while (!exit){
 
 
 //            generamos timestamp y lo appendizamos.
-                val tsLong = System.currentTimeMillis() / 1000
+                val tsLong = System.currentTimeMillis()
                 appendDataJsonArray(json_array_sensors, "TimeStamp", tsLong, json_sensors)
                 appendDataJsonArray(json_array_sensors, "ID", "24:71:89:E9:AA:86", json_sensors)
-
 
 
                 appendCheckedValue("TempAmb", value_temp)
