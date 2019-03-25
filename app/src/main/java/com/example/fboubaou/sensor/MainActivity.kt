@@ -33,6 +33,8 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.support.v4.content.ContextCompat
+import android.view.View
+import android.widget.ToggleButton
 import com.example.fboubaou.sensor.R.id.message
 import com.github.kittinunf.fuel.Fuel
 import java.net.HttpURLConnection
@@ -125,6 +127,8 @@ class MainActivity : AppCompatActivity() , SensorEventListener {
     //    BTN's manipulación de Info
     private lateinit var btn_envia: Button
     private lateinit var btn_stop: Button
+    private lateinit var btn_toggle: ToggleButton
+    private lateinit var titulo_send_tv: TextView
 
     @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("MissingPermission", "NewApi")
@@ -166,6 +170,8 @@ class MainActivity : AppCompatActivity() , SensorEventListener {
 //        Obtenemos el BTN's manipulacion de info
         this.btn_envia = findViewById(R.id.btn_send_data_drizzle)
         this.btn_stop = findViewById(R.id.btn_stop_send_data_drizzle)
+        this.btn_toggle = findViewById(R.id.toggle_btn)
+        this.titulo_send_tv = findViewById(R.id.envio_tv)
 /*-----------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------*/
 //        Sensor Manager
@@ -198,7 +204,8 @@ class MainActivity : AppCompatActivity() , SensorEventListener {
 
         val t1 = ThreadExample1()
 //    Listener del botón para enviar datos
-
+//       btn_stop.visibility= View.INVISIBLE
+//       btn_envia.visibility= View.INVISIBLE
         var first_entry:Boolean = false
         btn_envia.setOnClickListener {
 
@@ -210,17 +217,37 @@ class MainActivity : AppCompatActivity() , SensorEventListener {
                 this.exit = false
             }
 
-
-
-
         }
         btn_stop.setOnClickListener {
             Toast.makeText(this, "Envío de Información a Drizzle Parado", Toast.LENGTH_SHORT).show()
 
             this.exit = true
         }
+        btn_toggle.visibility = View.INVISIBLE
+        titulo_send_tv.visibility = View.INVISIBLE
+//        var first_entry:Boolean = false
+//        btn_toggle.setOnCheckedChangeListener { btn_toggle, isChecked ->
+//            if (isChecked) {
+//
+//                if (!first_entry) {
+//                Toast.makeText(this, "Envío de Información a Drizzle Iniciado", Toast.LENGTH_LONG).show()
+//                t1.start()
+//                first_entry = true
+//                } else {
+//                    this.exit = false
+//                }
+//
+//            } else {
+//            Toast.makeText(this, "Envío de Información a Drizzle Parado", Toast.LENGTH_SHORT).show()
+//
+//            this.exit = true
+//            }
+//        }
+
 
     }
+
+
 
     @SuppressLint("SetTextI18n")
     override fun onSensorChanged(event: SensorEvent?) {
@@ -380,9 +407,10 @@ class MainActivity : AppCompatActivity() , SensorEventListener {
 
 
 //            generamos timestamp y lo appendizamos.
-                val tsLong = System.currentTimeMillis()
+                var tsLong = System.currentTimeMillis()
+                tsLong = tsLong + 3600000
                 appendDataJsonArray(json_array_sensors, "TimeStamp", tsLong, json_sensors)
-                appendDataJsonArray(json_array_sensors, "ID", "24:71:89:E9:AA:86", json_sensors)
+                appendDataJsonArray(json_array_sensors, "ID", "B0:B4:48:BE:44:86", json_sensors)
 
 
                 appendCheckedValue("TempAmb", value_temp)

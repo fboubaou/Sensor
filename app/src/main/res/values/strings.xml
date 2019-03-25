@@ -14,5 +14,6 @@
     <string name="proximidad_title">Proximidad</string>
     <string name="humedad_title">Humedad Relativa</string>
     <string name="send_data_drizzle">Enviar datos a Drizzle</string>
+    <string name="send_data_drizzle_label">Envío datos a Drizzle</string>
     <string name="stop_send_data_drizzle">Parar envío datos a Drizzle</string>
 </resources>
